@@ -1,86 +1,116 @@
 # Material Mover
 
-Lightweight example project with:
-- Frontend: simple HTML/CSS/JS (buyer, seller, admin interfaces)
-- Backend: Node.js + Express + MongoDB + JWT
-- Search integration: forwards a search query to an external webhook (your friend's vector embedding service), expects a list of product IDs and returns products
+Lightweight marketplace for construction materials with Buyer, Seller and Admin roles.  
+Backend: Node.js + Express + MongoDB (Mongoose). Frontend: static HTML/CSS/JS in `public/`. Auth uses JWT; passwords are hashed with bcrypt.
 
-This repository is a scaffold to get you started locally and deploy to Vercel. It includes a serverless-compatible API and static frontend pages.
+## Key features
+- Buyer, Seller and Admin roles
+- Signup (buyer/seller) and admin-managed accounts
+- JWT-based auth for protected actions
+- Sellers can create, edit and delete products and upload images
+- Admin can search, edit and delete products and manage users
+- Public product search — contact details (address, phone_number) visible only to logged-in users
+- Category support for products
 
-## Project structure
+## Prerequisites
+- Node.js (LTS)
+- MongoDB instance (local or Atlas)
+- Git (optional)
 
-- `api/` - serverless-compatible Express entrypoint (used by Vercel or local node)
-- `server/` - models, routes and helpers
-- `public/` - frontend static files (index.html, login.html, seller.html, admin.html, css, js)
-- `seed/seed.js` - seeds example products and users
-- `.env.example` - environment variables
+## Environment
+Create a `.env` file in the project root (copy from `.env.example`) and set:
+- MONGODB_URI=your-mongodb-connection-string
+- JWT_SECRET=strong_random_secret
+- PORT=3000
+- SEARCH_WEBHOOK_URL=optional_webhook_url_for_vector_search
 
-## Required env variables
+Do NOT commit `.env`.
 
-- `MONGODB_URI` - your MongoDB connection string
-- `JWT_SECRET` - JWT secret
-- `SEARCH_WEBHOOK_URL` - the webhook URL your friend provides (service that accepts { query } and returns product ids)
-- `PORT` - local port (optional)
+## Install dependencies
+Run these commands in PowerShell from project root (E:\web dev\Material Mover):
 
-## Install & run locally (PowerShell)
-
-Open PowerShell in the project root and run the following commands:
-
-1. Install dependencies
-
+1) Install runtime dependencies
 ```powershell
+npm install express mongoose bcryptjs jsonwebtoken multer cors dotenv axios
+```
+
+2) Install useful dev dependencies
+```powershell
+npm install --save-dev nodemon
+```
+
+3) If your project uses serverless handler for Vercel, optionally install:
+```powershell
+npm install serverless-http
+```
+
+4) If you used any test/seed generators (optional)
+```powershell
+npm install --save-dev faker
+```
+
+After this you can run:
+```powershell
+# install from package.json (if present)
 npm install
 ```
 
-2. Copy the example env file and edit the values in a text editor (set MONGODB_URI and SEARCH_WEBHOOK_URL)
-
+## Run (local)
+Open PowerShell in project root:
 ```powershell
+cd "E:\web dev\Material Mover"
 copy .env.example .env
+# edit .env with your values
+npm run dev   # or npm start
 ```
+Then open http://localhost:3000
 
-3. Seed the database with example data
+## Project layout (important)
+- api/ or server/ — Express entry and server code
+- server/models/ — Mongoose models (User, Product)
+- server/routes/ — API routes (auth, products, uploads)
+- public/ — frontend pages (index.html, login.html, signup.html, seller.html, admin.html)
+- uploads/ — image uploads (gitignored)
+- seed/ — optional scripts (not required)
+- .env.example, .gitignore, README.md
 
-```powershell
-npm run seed
-```
+## User creation & auth
+- Public signup route allows creating Buyer or Seller accounts.
+- Admins can create admin accounts using protected API.
+- Passwords are hashed with bcryptjs before storing.
+- Login returns a JWT; include `Authorization: Bearer <token>` for protected requests.
 
-4. Run the dev server (nodemon)
+## Important API endpoints (quick)
+- POST /api/auth/signup — public signup (buyer/seller)
+- POST /api/auth/login — login, returns JWT
+- POST /api/auth/create-user — admin only
+- DELETE /api/auth/users/:id — admin only (delete user and their products)
+- GET /api/products — list products (public)
+- POST /api/products — create product (seller)
+- GET /api/products/:id — get product
+- PUT /api/products/:id — update product (owner or admin)
+- DELETE /api/products/:id — delete product (owner or admin)
+- POST /api/products/search — search (can call webhook; falls back to local search)
+- GET /api/products/categories — list categories
+- POST /api/upload/image — upload image (seller/admin)
 
-```powershell
-npm run dev
-```
+Note: Contact fields (`address`, `phone_number`) are returned only for authenticated requests.
 
-Open http://localhost:3000 in your browser.
+## Frontend pages
+- `/` or `/index.html` — search & browse
+- `/login.html` — login
+- `/signup.html` — signup (buyer/seller)
+- `/seller.html` — seller dashboard (product management)
+- `/admin.html` — admin panel (user & product management)
 
-Seed creates sample accounts:
-- buyer@example.com / password123
-- seller@example.com / password123
-- admin@example.com / password123
+## Security notes
+- Passwords hashed with bcryptjs (do not store plaintext).
+- Use a strong `JWT_SECRET` and keep it out of source control.
+- For production, prefer httpOnly secure cookies for tokens instead of localStorage.
+- Add rate limiting and stronger validation for auth endpoints in production.
+- Consider using managed storage (S3/Cloudinary) for images in production.
 
-## How search works
-
-1. Buyer (or logged-in user) types a query in the search box.
-2. Frontend calls `POST /api/products/search` with `{ query }`.
-3. Server forwards the query to `SEARCH_WEBHOOK_URL` (your friend's endpoint).
-4. The webhook must return product ids either as an array or in `{ productIds: [...] }`.
-5. Server fetches product documents from MongoDB and returns them to the frontend.
-
-## Deploying to Vercel
-
-You can deploy this repo to Vercel. Vercel will serve the `public/` folder as static files and `api/` as serverless functions.
-
-Steps:
-
-1. Push this repository to GitHub.
-2. In Vercel dashboard, Import Project -> select GitHub repo.
-3. Set environment variables in Vercel project settings: `MONGODB_URI`, `JWT_SECRET`, `SEARCH_WEBHOOK_URL`.
-4. Deploy. Vercel will run serverless functions in `api/` and serve the frontend.
-
-Notes on production:
-- For long-running servers and workloads consider Render or Railway. Serverless functions have execution and cold-start limits.
-
-## Next steps & suggestions
-
-- Add file uploads for product images (Cloudinary/S3).
-- Add pagination and better search UX.
-- Add admin product/user management UI.
+## Debugging & tips
+- If protected endpoints return auth errors, ensure client omits empty Authorization headers when not logged in.
+- If product creation fails, verify required fields: title, description, price, quantity, category (and address/phone if model requires).
+- Inspect server logs for validation errors returned by Mongoose.
