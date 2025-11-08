@@ -6,21 +6,22 @@ async function renderProducts(products) {
   products.forEach(p => {
     const el = document.createElement('div'); el.className = 'card';
     el.innerHTML = `
-      <div class="product-image-container" style="width: 100%; height: 200px; overflow: hidden; background: #f5f5f5; display: flex; align-items: center; justify-content: center; margin-bottom: 12px; border-radius: 8px;">
-        <img src="${p.image || '/images/placeholder.png'}" alt="${p.title}" style="width: 100%; height: 100%; object-fit: cover;">
-      </div>
-      <h4>${p.title}</h4>
-      <p>${p.description || ''}</p>
-      <strong>₹${p.price || 0}</strong>
-      ${isLoggedIn ? `
-        ${p.address ? `<p class="address"><strong>Address:</strong> ${p.address}</p>` : ''}
-        ${p.phone_number ? `<p class="phone"><strong>Contact:</strong> ${p.phone_number}</p>` : ''}
-      ` : `
-        <p class="login-notice" style="margin-top: 10px; color: #666; font-size: 0.9em;">
-          <a href="/login.html" style="color: #2563eb; text-decoration: none;">Login</a> to view contact details
-        </p>
-      `}
-    `;
+  <div class="product-image-container" style="width: 100%; height: 200px; overflow: hidden; background: #f5f5f5; display: flex; align-items: center; justify-content: center; margin-bottom: 12px; border-radius: 8px;">
+    <img src="${p.image || '/images/placeholder.png'}" alt="${p.title}" style="width: 100%; height: 100%; object-fit: cover;">
+  </div>
+  <h4>${p.title}</h4>
+  <p>${p.description || ''}</p>
+  <strong>₹${p.price || 0}</strong>
+  ${isLoggedIn ? `
+    ${p.address ? `<p class="address"><strong>Address:</strong> ${p.address}</p>` : ''}
+    ${p.phone_number ? `<p class="phone"><strong>Contact:</strong> ${p.phone_number}</p>` : ''}
+  ` : `
+    <p class="login-notice" style="margin-top: 10px; color: #666; font-size: 0.9em;">
+      <a href="/login.html" style="color: #2563eb; text-decoration: none;">Login</a> to view contact details
+    </p>
+  `}
+`;
+
     container.appendChild(el);
   });
 }
@@ -64,6 +65,24 @@ function updateHeader() {
     if (userInfo) userInfo.style.display = 'none';
   }
 }
+
+//handle category filter
+document.querySelectorAll('.category-item').forEach(item => {
+  item.addEventListener('click', async () => {
+    const category = item.dataset.category;
+    const token = localStorage.getItem('token');
+    const headers = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = 'Bearer ' + token;
+    const resp = await fetch('/api/products/search', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ query: category })
+    });
+    const j = await resp.json();
+    if (resp.ok) renderProducts(j.products || []);
+  });
+});
+
 
 // Handle logout
 document.getElementById('logoutBtn')?.addEventListener('click', (e) => {

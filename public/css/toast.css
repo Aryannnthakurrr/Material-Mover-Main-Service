@@ -92,3 +92,44 @@
     opacity: 0;
   }
 }
+
+/* Confirmation toast styles */
+.confirm-toast {
+  background: #ffffff;
+  border-left: 4px solid #f87171;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+  animation: slideIn 0.3s ease-out;
+}
+
+.confirm-toast .toast-message {
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.toast-btn {
+  border: none;
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.toast-btn.yes {
+  background: #dc2626;
+  color: white;
+}
+
+.toast-btn.no {
+  background: #e5e7eb;
+  color: #111827;
+}
+
+.toast-btn:hover {
+  opacity: 0.9;
+}
+.confirm-toast .toast-actions {
+  display: flex;
+  gap: 8px;
+  margin-left: 12px;
+}
