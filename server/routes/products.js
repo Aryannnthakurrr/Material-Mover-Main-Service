@@ -4,42 +4,72 @@ const axios = require('axios');
 const Product = require('../models/Product');
 const auth = require('../middleware/auth');
 
-// POST /api/products/search -> send { query } to external webhook, receive product ids, return products
+// POST /api/products/search -> send { query } to friend's server, receive product ids, return products
 router.post('/search', auth([]), async (req, res) => {
   const { query } = req.body;
   if (!query) return res.status(400).json({ message: 'query required' });
   
   try {
-    // Try webhook search first if configured
-    const webhook = process.env.SEARCH_WEBHOOK_URL;
-    if (webhook) {
+    // Try getting product IDs from friend's server
+    const friendServerUrl=process.env.friendServer_Url;
+    
+    if (friendServerUrl) {
       try {
-        const resp = await axios.post(webhook, { query });
+        const requestUrl = `${friendServerUrl}/recommend?query=${encodeURIComponent(query)}`;
+        console.log('Requesting from friend server:', requestUrl);
+        
+        const resp = await axios.get(requestUrl, {
+          timeout: 5000 // 5 second timeout
+        });
+        
+        console.log('Friend server response:', resp.data);
+        
         let ids = [];
-        if (Array.isArray(resp.data)) ids = resp.data;
-        else if (Array.isArray(resp.data.productIds)) ids = resp.data.productIds;
-        else if (Array.isArray(resp.data.ids)) ids = resp.data.ids;
+        // Handle different response formats
+        if (Array.isArray(resp.data)) {
+          ids = resp.data;
+        } else if (Array.isArray(resp.data.productIds)) {
+          ids = resp.data.productIds;
+        } else if (Array.isArray(resp.data.ids)) {
+          ids = resp.data.ids;
+        } else if (Array.isArray(resp.data.product_ids)) {
+          ids = resp.data.product_ids;
+        }
+        
+        console.log('Extracted product IDs:', ids);
         
         if (ids.length > 0) {
           const products = await Product.find({ _id: { $in: ids } });
           if (products.length > 0) {
-            return res.json({ products, source: 'webhook' });
+            console.log(`Found ${products.length} products from friend's recommendations`);
+            return res.json({ products, source: 'friend' });
           }
         }
-      } catch (webhookErr) {
-        console.log('Webhook search failed, falling back to local search:', webhookErr.message);
+        
+        console.log('No products found from friend server, falling back to local search');
+      } catch (friendServerErr) {
+        console.error('Friend server error details:', {
+          message: friendServerErr.message,
+          code: friendServerErr.code,
+          response: friendServerErr.response?.data
+        });
+        console.log('Falling back to local search');
       }
+    } else {
+      console.log('Friend server URL not configured, using local search');
     }
 
-    // Fall back to local search if webhook fails or returns no results
+    // Fall back to local search if friend's server fails or returns no results
     const searchRegex = new RegExp(query, 'i');
     const products = await Product.find({
       $or: [
         { title: searchRegex },
-        { description: searchRegex }
+        { description: searchRegex },
+        { category: searchRegex }
       ]
     }).limit(50);
 
+    console.log(`Local search found ${products.length} products`);
     res.json({ products, source: 'local' });
   } catch (err) {
     console.error('Search error:', err.message);
@@ -149,7 +179,7 @@ router.put('/:id', auth(['seller', 'admin']), async (req, res) => {
       return res.status(403).json({ message: 'Not authorized to edit this product' });
     }
 
-    const { title, description, price, quantity, category, image } = req.body;
+    const { title, description, price, quantity, category, image, address, phone_no } = req.body;
 
     if (title !== undefined) product.title = title;
     if (description !== undefined) product.description = description;
@@ -157,6 +187,8 @@ router.put('/:id', auth(['seller', 'admin']), async (req, res) => {
     if (quantity !== undefined) product.quantity = quantity;
     if (category !== undefined) product.category = category;
     if (image !== undefined) product.image = image;
+    if (address !== undefined) product.address = address;
+    if (phone_no !== undefined) product.phone_no = phone_no;
 
     await product.save();
     res.json({ product });
