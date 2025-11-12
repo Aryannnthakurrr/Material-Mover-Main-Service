@@ -1,15 +1,18 @@
-<!doctype html>
+<!DOCTYPE html>
 <html>
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>Seller - Material Mover</title>
-    <link rel="stylesheet" href="/css/style.css">
-    <link rel="stylesheet" href="/css/seller.css">
-    <link rel="stylesheet" href="/css/toast.css">
+    <link rel="stylesheet" href="/css/style.css" />
+    <link rel="stylesheet" href="/css/seller.css" />
+    <link rel="stylesheet" href="/css/toast.css" />
   </head>
   <body>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
     <header class="site-header">
       <h1>Seller Dashboard</h1>
       <nav>
@@ -27,11 +30,23 @@
           <form id="createForm">
             <div class="form-group">
               <label for="title">Title *</label>
-              <input id="title" class="older-box" type="text" placeholder="Enter product title" required />
+              <input
+                id="title"
+                class="older-box"
+                type="text"
+                placeholder="Enter product title"
+                required
+              />
             </div>
             <div class="form-group">
               <label for="desc">Description *</label>
-              <input id="desc" class="older-box" type="text" placeholder="Short description" required />
+              <input
+                id="desc"
+                class="older-box"
+                type="text"
+                placeholder="Short description"
+                required
+              />
             </div>
             <div class="form-row">
               <div class="form-group">
@@ -42,36 +57,74 @@
               </div>
               <div class="form-group">
                 <label for="price">Price * (₹)</label>
-                <input id="price" type="number" min="0" step="0.01" placeholder="Enter price" required />
+                <input
+                  id="price"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  placeholder="Enter price"
+                  required
+                />
               </div>
             </div>
             <div class="form-row">
               <div class="form-group">
                 <label for="quantity">Quantity *</label>
-                <input id="quantity" type="number" min="0" step="1" placeholder="Available quantity" required />
+                <input
+                  id="quantity"
+                  type="number"
+                  min="0"
+                  step="1"
+                  placeholder="Available quantity"
+                  required
+                />
               </div>
               <div class="form-group">
                 <label for="address">Address *</label>
-                <input id="address" type="text" placeholder="Enter pickup address" required />
+                <input
+                  id="address"
+                  type="text"
+                  placeholder="Enter pickup address"
+                  required
+                />
               </div>
             </div>
             <div class="form-row">
               <div class="form-group">
                 <label for="phone_no">Phone Number *</label>
-                <input id="phone_no" type="tel" placeholder="Enter contact number" required />
+                <input
+                  id="phone_no"
+                  type="tel"
+                  placeholder="Enter contact number"
+                  required
+                />
               </div>
               <div class="form-group">
                 <label>Product Image</label>
                 <div class="image-upload">
                   <div class="upload-placeholder">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                      />
                     </svg>
                     <p>Drag and drop an image or click to browse</p>
                   </div>
                   <input type="file" id="imageFile" accept="image/*" />
                   <span>or</span>
-                  <input id="imageUrl" type="url" placeholder="Paste an image URL" />
+                  <input
+                    id="imageUrl"
+                    type="url"
+                    placeholder="Paste an image URL"
+                  />
                   <div id="imagePreview" class="image-preview"></div>
                 </div>
               </div>
@@ -88,335 +141,373 @@
         </div>
       </section>
     </main>
-      <script src="/js/toast.js"></script>
+    <script src="/js/toast.js"></script>
     <script>
-          // Format price to currency
-          const formatPrice = (price) => {
-            return new Intl.NumberFormat('en-IN', {
-              style: 'currency',
-              currency: 'INR'
-            }).format(price);
-          };
-
-        // Initialize toast
-        const toast = new Toast();
-
-        // Edit state
-        let currentEditId = null;
-
-        // Populate form for editing
-        async function editProduct(id) {
-          try {
-            const resp = await fetch(`/api/products/${id}`, {
-              headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') }
-            });
-            if (!resp.ok) {
-              const err = await resp.json();
-              toast.error(err.message || 'Unable to load product');
-              return;
-            }
-            const payload = await resp.json();
-            const product = payload.product || payload;
-
-            // Fill form fields
-            document.getElementById('title').value = product.title || '';
-            document.getElementById('desc').value = product.description || '';
-            document.getElementById('price').value = product.price ?? '';
-            document.getElementById('quantity').value = product.quantity ?? '';
-            document.getElementById('category').value = product.category || '';
-
-            // Show image preview
-            const preview = document.getElementById('imagePreview');
-            if (product.image) {
-              preview.innerHTML = `<img src="${product.image}" alt="${product.title}">`;
-              document.getElementById('imageUrl').value = product.image;
-              uploadedImagePath = product.image;
-            } else {
-              preview.innerHTML = '';
-              document.getElementById('imageUrl').value = '';
-              uploadedImagePath = '';
-            }
-
-            currentEditId = id;
-            // Change submit button text
-            const submitBtn = document.querySelector('button[type="submit"]');
-            submitBtn.textContent = 'Update Product';
-            toast.info('Editing product — make changes and click Update');
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-          } catch (err) {
-            console.error('Error fetching product for edit', err);
-            toast.error('Error loading product');
-          }
-        }
-
-      if (!localStorage.getItem('token') || localStorage.getItem('role') !== 'seller') {
-          toast.error('Please login as seller');
+            function checkTokenExpiry() {
+        const token = localStorage.getItem('token');
+        if (!token) {
+          toast.error('Please login');
           setTimeout(() => location.href = '/login.html', 1500);
-      }
-      document.getElementById('logout').addEventListener('click', () => { localStorage.clear(); location.href = '/'; });
-      const imageFile = document.getElementById('imageFile');
-      const imageUrl = document.getElementById('imageUrl');
-      const imagePreview = document.getElementById('imagePreview');
-      let uploadedImagePath = '';
-
-      // Load categories
-      async function loadCategories() {
-        try {
-          const response = await fetch('/api/products/categories', {
-            headers: {
-              'Authorization': 'Bearer ' + localStorage.getItem('token')
-            }
-          });
-          const data = await response.json();
-          const categorySelect = document.getElementById('category');
-          
-          data.categories.forEach(category => {
-            const option = document.createElement('option');
-            option.value = category;
-            option.textContent = category;
-            categorySelect.appendChild(option);
-          });
-        } catch (err) {
-          console.error('Error loading categories:', err);
+          return false;
         }
-      }
-      
-      // Load categories when page loads
-      loadCategories();
 
-      // Handle file selection
-      imageFile.addEventListener('change', async (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-        
-        // Show preview
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          imagePreview.innerHTML = `<img src="${e.target.result}" alt="Preview">`;
-        };
-        reader.readAsDataURL(file);
-        
-        // Upload file
-        imagePreview.classList.add('loading');
-        const formData = new FormData();
-        formData.append('image', file);
-        
         try {
-          const resp = await fetch('/api/upload/image', {
-            method: 'POST',
-            headers: {
-              'Authorization': 'Bearer ' + localStorage.getItem('token')
-            },
-            body: formData
-          });
-          
-          const result = await resp.json();
-          if (resp.ok) {
-            uploadedImagePath = result.path;
-            imageUrl.value = ''; // Clear URL input
-              toast.success('Image uploaded successfully');
-          } else {
-              toast.error('Upload failed: ' + result.message);
+          const payload = JSON.parse(atob(token.split('.')[1]));
+          const expiryTime = payload.exp * 1000;
+
+          if (Date.now() >= expiryTime) {
+            localStorage.clear();
+            toast.error('Session expired. Please login again.');
+            setTimeout(() => location.href = '/login.html', 1500);
+            return false;
           }
-        } catch (err) {
-            toast.error('Upload error: ' + err.message);
-        } finally {
-          imagePreview.classList.remove('loading');
-        }
-      });
 
-      // Handle URL input
-      imageUrl.addEventListener('input', (e) => {
-        const url = e.target.value;
-        if (url) {
-          imagePreview.innerHTML = `<img src="${url}" alt="Preview">`;
-          imageFile.value = ''; // Clear file input
-          uploadedImagePath = url;
-        } else {
-          imagePreview.innerHTML = '';
+          return true;
+        } catch (e) {
+          localStorage.clear();
+          toast.error('Invalid session. Please login again.');
+          setTimeout(() => location.href = '/login.html', 1500);
+          return false;
         }
-      });
+      }
 
-      // Handle form submission
-      document.getElementById('createForm').addEventListener('submit', async (e) => {
+      // Call it on page load
+      if (!checkTokenExpiry()) {
+        // Prevent rest of page from loading
+      }
+
+      // Also check before important actions
+      document.getElementById('createForm')?.addEventListener('submit', async (e) => {
         e.preventDefault();
-        
-        try {
-          // Get form values
-          const title = document.getElementById('title').value.trim();
-          const description = document.getElementById('desc').value.trim();
-          const priceStr = document.getElementById('price').value;
-          const quantityStr = document.getElementById('quantity').value;
-          const category = document.getElementById('category').value;
-          const address = document.getElementById('address').value.trim();
-          const phone_no = document.getElementById('phone_no').value.trim();
-          const image = uploadedImagePath || imageUrl.value;
-          
-          // Validate all required fields are present
-          if (!title || !description || !priceStr || !quantityStr || !category || !address || !phone_no) {
-            toast.error('Please fill in all required fields');
-            return;
-          }
-          
-          // Parse and validate numeric fields
-          const price = parseFloat(priceStr);
-          const quantity = parseInt(quantityStr);
-          
-          if (isNaN(price) || price < 0) {
-            toast.error('Please enter a valid price (must be 0 or greater)');
-            return;
-          }
-          
-          if (isNaN(quantity) || quantity < 0) {
-            toast.error('Please enter a valid quantity (must be 0 or greater)');
-            return;
-          }
 
-          // Decide endpoint and method based on edit state
-          const endpoint = currentEditId ? `/api/products/${currentEditId}` : '/api/products';
-          const method = currentEditId ? 'PUT' : 'POST';
+        if (!checkTokenExpiry()) return; // Check before submitting
+                // Format price to currency
+                const formatPrice = (price) => {
+                  return new Intl.NumberFormat('en-IN', {
+                    style: 'currency',
+                    currency: 'INR'
+                  }).format(price);
+                };
 
-          const resp = await fetch(endpoint, { 
-            method,
-            headers: { 
-              'Content-Type': 'application/json', 
-              'Authorization': 'Bearer ' + localStorage.getItem('token') 
-            }, 
-            body: JSON.stringify({ 
-              title, 
-              description, 
-              price,      // Now a number
-              quantity,   // Now a number
-              category,
-              address,    // Added
-              phone_no,   // Added
-              image 
-            }) 
-          });
-          
-          const data = await resp.json();
-          
-          if (resp.ok) { 
-            toast.success(currentEditId ? 'Product updated successfully' : 'Product created successfully');
-            // Clear form and reset edit state
-            e.target.reset();
-            imagePreview.innerHTML = '';
-            uploadedImagePath = '';
-            currentEditId = null;
-            const submitBtn = document.querySelector('button[type="submit"]');
-            submitBtn.textContent = 'Create Product';
-            // Refresh product list
-            loadMyProducts();
-          } else {
-            // Show detailed error message if available
-            const errorMessage = data.details ? 
-              data.details.join('\n') : 
-              data.message || 'Error creating product';
-            toast.error(errorMessage);
-          }
-        } catch (err) {
-          console.error('Error creating product:', err);
-          toast.error('Error creating product. Please try again.');
-        }
-      });
+              // Initialize toast
+              const toast = new Toast();
 
-      // Load seller's products
-      async function loadMyProducts() {
-        try {
-          const resp = await fetch('/api/products/my', {
-            headers: {
-              'Authorization': 'Bearer ' + localStorage.getItem('token')
-            }
-          });
-          const data = await resp.json();
-          const container = document.getElementById('myProducts');
-          
-          if (!data.products || !data.products.length) {
-            container.innerHTML = '<p>No products yet</p>';
-            return;
-          }
-          
-              if (data.products.length === 0) {
-                container.innerHTML = '<div class="products-empty">No products added yet</div>';
-                return;
+              // Edit state
+              let currentEditId = null;
+
+              // Populate form for editing
+              async function editProduct(id) {
+                try {
+                  const resp = await fetch(`/api/products/${id}`, {
+                    headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') }
+                  });
+                  if (!resp.ok) {
+                    const err = await resp.json();
+                    toast.error(err.message || 'Unable to load product');
+                    return;
+                  }
+                  const payload = await resp.json();
+                  const product = payload.product || payload;
+
+                  // Fill form fields
+                  document.getElementById('title').value = product.title || '';
+                  document.getElementById('desc').value = product.description || '';
+                  document.getElementById('price').value = product.price ?? '';
+                  document.getElementById('quantity').value = product.quantity ?? '';
+                  document.getElementById('category').value = product.category || '';
+
+                  // Show image preview
+                  const preview = document.getElementById('imagePreview');
+                  if (product.image) {
+                    preview.innerHTML = `<img src="${product.image}" alt="${product.title}">`;
+                    document.getElementById('imageUrl').value = product.image;
+                    uploadedImagePath = product.image;
+                  } else {
+                    preview.innerHTML = '';
+                    document.getElementById('imageUrl').value = '';
+                    uploadedImagePath = '';
+                  }
+
+                  currentEditId = id;
+                  // Change submit button text
+                  const submitBtn = document.querySelector('button[type="submit"]');
+                  submitBtn.textContent = 'Update Product';
+                  toast.info('Editing product — make changes and click Update');
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                } catch (err) {
+                  console.error('Error fetching product for edit', err);
+                  toast.error('Error loading product');
+                }
               }
-            
-            const productsHtml = data.products.map(product => {
-              const thumbnail = product.image ? product.image : '/images/placeholder.png';
-              return `
-                <div class="simple-item">
-                  <div style="display:flex;align-items:center">
-                    <img class="thumb" src="${thumbnail}" alt="${product.title}">
-                    <div class="meta">
-                      <div>
-                        <div class="title">${product.title}</div>
-                        <div class="category">${product.category || ''}</div>
+
+            if (!localStorage.getItem('token') || localStorage.getItem('role') !== 'seller') {
+                toast.error('Please login as seller');
+                setTimeout(() => location.href = '/login.html', 1500);
+            }
+            document.getElementById('logout').addEventListener('click', () => { localStorage.clear(); location.href = '/'; });
+            const imageFile = document.getElementById('imageFile');
+            const imageUrl = document.getElementById('imageUrl');
+            const imagePreview = document.getElementById('imagePreview');
+            let uploadedImagePath = '';
+
+            // Load categories
+            async function loadCategories() {
+              try {
+                const response = await fetch('/api/products/categories', {
+                  headers: {
+                    'Authorization': 'Bearer ' + localStorage.getItem('token')
+                  }
+                });
+                const data = await response.json();
+                const categorySelect = document.getElementById('category');
+
+                data.categories.forEach(category => {
+                  const option = document.createElement('option');
+                  option.value = category;
+                  option.textContent = category;
+                  categorySelect.appendChild(option);
+                });
+              } catch (err) {
+                console.error('Error loading categories:', err);
+              }
+            }
+
+            // Load categories when page loads
+            loadCategories();
+
+            // Handle file selection
+            imageFile.addEventListener('change', async (e) => {
+              const file = e.target.files[0];
+              if (!file) return;
+
+              // Show preview
+              const reader = new FileReader();
+              reader.onload = (e) => {
+                imagePreview.innerHTML = `<img src="${e.target.result}" alt="Preview">`;
+              };
+              reader.readAsDataURL(file);
+
+              // Upload file
+              imagePreview.classList.add('loading');
+              const formData = new FormData();
+              formData.append('image', file);
+
+              try {
+                const resp = await fetch('/api/upload/image', {
+                  method: 'POST',
+                  headers: {
+                    'Authorization': 'Bearer ' + localStorage.getItem('token')
+                  },
+                  body: formData
+                });
+
+                const result = await resp.json();
+                if (resp.ok) {
+                  uploadedImagePath = result.path;
+                  imageUrl.value = ''; // Clear URL input
+                    toast.success('Image uploaded successfully');
+                } else {
+                    toast.error('Upload failed: ' + result.message);
+                }
+              } catch (err) {
+                  toast.error('Upload error: ' + err.message);
+              } finally {
+                imagePreview.classList.remove('loading');
+              }
+            });
+
+            // Handle URL input
+            imageUrl.addEventListener('input', (e) => {
+              const url = e.target.value;
+              if (url) {
+                imagePreview.innerHTML = `<img src="${url}" alt="Preview">`;
+                imageFile.value = ''; // Clear file input
+                uploadedImagePath = url;
+              } else {
+                imagePreview.innerHTML = '';
+              }
+            });
+
+            // Handle form submission
+            document.getElementById('createForm').addEventListener('submit', async (e) => {
+              e.preventDefault();
+
+              try {
+                // Get form values
+                const title = document.getElementById('title').value.trim();
+                const description = document.getElementById('desc').value.trim();
+                const priceStr = document.getElementById('price').value;
+                const quantityStr = document.getElementById('quantity').value;
+                const category = document.getElementById('category').value;
+                const address = document.getElementById('address').value.trim();
+                const phone_no = document.getElementById('phone_no').value.trim();
+                const image = uploadedImagePath || imageUrl.value;
+
+                // Validate all required fields are present
+                if (!title || !description || !priceStr || !quantityStr || !category || !address || !phone_no) {
+                  toast.error('Please fill in all required fields');
+                  return;
+                }
+
+                // Parse and validate numeric fields
+                const price = parseFloat(priceStr);
+                const quantity = parseInt(quantityStr);
+
+                if (isNaN(price) || price < 0) {
+                  toast.error('Please enter a valid price (must be 0 or greater)');
+                  return;
+                }
+
+                if (isNaN(quantity) || quantity < 0) {
+                  toast.error('Please enter a valid quantity (must be 0 or greater)');
+                  return;
+                }
+
+                // Decide endpoint and method based on edit state
+                const endpoint = currentEditId ? `/api/products/${currentEditId}` : '/api/products';
+                const method = currentEditId ? 'PUT' : 'POST';
+
+                const resp = await fetch(endpoint, {
+                  method,
+                  headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Bearer ' + localStorage.getItem('token')
+                  },
+                  body: JSON.stringify({
+                    title,
+                    description,
+                    price,      // Now a number
+                    quantity,   // Now a number
+                    category,
+                    address,    // Added
+                    phone_no,   // Added
+                    image
+                  })
+                });
+
+                const data = await resp.json();
+
+                if (resp.ok) {
+                  toast.success(currentEditId ? 'Product updated successfully' : 'Product created successfully');
+                  // Clear form and reset edit state
+                  e.target.reset();
+                  imagePreview.innerHTML = '';
+                  uploadedImagePath = '';
+                  currentEditId = null;
+                  const submitBtn = document.querySelector('button[type="submit"]');
+                  submitBtn.textContent = 'Create Product';
+                  // Refresh product list
+                  loadMyProducts();
+                } else {
+                  // Show detailed error message if available
+                  const errorMessage = data.details ?
+                    data.details.join('\n') :
+                    data.message || 'Error creating product';
+                  toast.error(errorMessage);
+                }
+              } catch (err) {
+                console.error('Error creating product:', err);
+                toast.error('Error creating product. Please try again.');
+              }
+            });
+
+            // Load seller's products
+            async function loadMyProducts() {
+              try {
+                const resp = await fetch('/api/products/my', {
+                  headers: {
+                    'Authorization': 'Bearer ' + localStorage.getItem('token')
+                  }
+                });
+                const data = await resp.json();
+                const container = document.getElementById('myProducts');
+
+                if (!data.products || !data.products.length) {
+                  container.innerHTML = '<p>No products yet</p>';
+                  return;
+                }
+
+                    if (data.products.length === 0) {
+                      container.innerHTML = '<div class="products-empty">No products added yet</div>';
+                      return;
+                    }
+
+                  const productsHtml = data.products.map(product => {
+                    const thumbnail = product.image ? product.image : '/images/placeholder.png';
+                    return `
+                      <div class="simple-item">
+                        <div style="display:flex;align-items:center">
+                          <img class="thumb" src="${thumbnail}" alt="${product.title}">
+                          <div class="meta">
+                            <div>
+                              <div class="title">${product.title}</div>
+                              <div class="category">${product.category || ''}</div>
+                            </div>
+                          </div>
+                        </div>
+                        <div style="display:flex;align-items:center;gap:12px">
+                          <div class="price">${formatPrice(product.price)}</div>
+                          <div class="quantity">Qty: ${product.quantity}</div>
+                          <div class="actions">
+                            <button onclick="editProduct('${product._id}')">Edit</button>
+                            <button onclick="deleteProduct('${product._id}')">Delete</button>
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  </div>
-                  <div style="display:flex;align-items:center;gap:12px">
-                    <div class="price">${formatPrice(product.price)}</div>
-                    <div class="quantity">Qty: ${product.quantity}</div>
-                    <div class="actions">
-                      <button onclick="editProduct('${product._id}')">Edit</button>
-                      <button onclick="deleteProduct('${product._id}')">Delete</button>
-                    </div>
-                  </div>
-                </div>
-              `;
-            }).join('');
+                    `;
+                  }).join('');
 
-            container.innerHTML = productsHtml;
-        } catch (err) {
-          console.error('Error loading products:', err);
-        }
-      }
+                  container.innerHTML = productsHtml;
+              } catch (err) {
+                console.error('Error loading products:', err);
+              }
+            }
 
-      // Delete product
-      async function deleteProduct(id) {
-  // Custom confirmation using toast
-  const confirmToast = document.createElement('div');
-  confirmToast.className = 'toast confirm-toast';
-  confirmToast.innerHTML = `
-    <div class="toast-message">🗑️ Are you sure you want to delete this product?</div>
-    <div style="display:flex;gap:8px;margin-top:8px;">
-      <button id="confirmYes" class="toast-btn yes">Yes, Delete</button>
-      <button id="confirmNo" class="toast-btn no">Cancel</button>
-    </div>
-  `;
-  toast.container.appendChild(confirmToast);
+            // Delete product
+            async function deleteProduct(id) {
+        // Custom confirmation using toast
+        const confirmToast = document.createElement('div');
+        confirmToast.className = 'toast confirm-toast';
+        confirmToast.innerHTML = `
+          <div class="toast-message">🗑️ Are you sure you want to delete this product?</div>
+          <div style="display:flex;gap:8px;margin-top:8px;">
+            <button id="confirmYes" class="toast-btn yes">Yes, Delete</button>
+            <button id="confirmNo" class="toast-btn no">Cancel</button>
+          </div>
+        `;
+        toast.container.appendChild(confirmToast);
 
-  return new Promise((resolve) => {
-    confirmToast.querySelector('#confirmYes').addEventListener('click', async () => {
-      confirmToast.remove();
-      try {
-        const resp = await fetch(`/api/products/${id}`, {
-          method: 'DELETE',
-          headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') }
+        return new Promise((resolve) => {
+          confirmToast.querySelector('#confirmYes').addEventListener('click', async () => {
+            confirmToast.remove();
+            try {
+              const resp = await fetch(`/api/products/${id}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') }
+              });
+              const data = await resp.json();
+              if (resp.ok) {
+                toast.success('✅ Product deleted successfully');
+                loadMyProducts();
+              } else {
+                toast.error(data.message || 'Error deleting product');
+              }
+            } catch (err) {
+              toast.error('Error deleting product. Please try again.');
+            }
+            resolve(true);
+          });
+
+          confirmToast.querySelector('#confirmNo').addEventListener('click', () => {
+            confirmToast.remove();
+            toast.info('Deletion cancelled');
+            resolve(false);
+          });
         });
-        const data = await resp.json();
-        if (resp.ok) {
-          toast.success('✅ Product deleted successfully');
-          loadMyProducts();
-        } else {
-          toast.error(data.message || 'Error deleting product');
-        }
-      } catch (err) {
-        toast.error('Error deleting product. Please try again.');
       }
-      resolve(true);
-    });
 
-    confirmToast.querySelector('#confirmNo').addEventListener('click', () => {
-      confirmToast.remove();
-      toast.info('Deletion cancelled');
-      resolve(false);
-    });
-  });
-}
-
-      // Load products on page load
-      loadMyProducts();
+            // Load products on page load
+            loadMyProducts();
     </script>
     <style>
       .delete-btn {
@@ -427,11 +518,19 @@
         border-radius: 6px;
         cursor: pointer;
       }
-      .delete-btn:hover { background: #dc2626 }
+      .delete-btn:hover {
+        background: #dc2626;
+      }
 
       /* Fallback simple list layout tweaks */
-      .simple-product-list { margin-top: 16px }
-      .simple-item .actions { display:flex; gap:8px; align-items:center }
+      .simple-product-list {
+        margin-top: 16px;
+      }
+      .simple-item .actions {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+      }
     </style>
   </body>
 </html>
