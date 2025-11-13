@@ -14,10 +14,19 @@
         margin: 20px 0;
       }
       .admin-card {
-        background: var(--panel);
-        padding: 16px;
-        border-radius: 12px;
-      }
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  padding: 20px;
+  border-radius: 16px;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
+  transition: all 0.3s ease;
+}
+
+.admin-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.12);
+}
       .user-list {
         margin: 20px 0;
       }
@@ -123,7 +132,18 @@
 
     <script src="/js/toast.js"></script>
     <script>
-        function checkTokenExpiry() {
+      // --- Auth Check ---
+      if (!localStorage.getItem('token') || localStorage.getItem('role') !== 'admin') {
+        alert('Please login as admin');
+        location.href = '/login.html';
+      }
+
+      const token = localStorage.getItem('token');
+      const headers = { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' };
+      const toast = new Toast();
+
+      // --- Token Expiry Check ---
+      function checkTokenExpiry() {
         const token = localStorage.getItem('token');
         if (!token) {
           toast.error('Please login');
@@ -151,289 +171,275 @@
         }
       }
 
-      // Call it on page load
-      if (!checkTokenExpiry()) {
-        // Prevent rest of page from loading
-      }
+      // Check token on page load
+      checkTokenExpiry();
 
-      // Also check before important actions
-      document.getElementById('createForm')?.addEventListener('submit', async (e) => {
-        e.preventDefault();
-
-        if (!checkTokenExpiry()) return; // Check before submitting
-        // --- Auth Check ---
-        if (!localStorage.getItem('token') || localStorage.getItem('role') !== 'admin') {
-          alert('Please login as admin'); // this one stays intentionally to redirect before toast is available
-          location.href = '/login.html';
-        }
-
-        const token = localStorage.getItem('token');
-        const headers = { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' };
-        const toast = new Toast();
-
-        // --- Load Users ---
-        async function loadUsers() {
-          try {
-            const r = await fetch('/api/auth/users', { headers });
-            if (!r.ok) throw new Error('Failed to load users');
-            const users = await r.json();
-            const html = users.map(u => `
-              <div class="user-item">
-                <div>
-                  ${u.email}
-                  <span class="role-badge ${u.role}">${u.role}</span>
-                </div>
-                <div>
-                  ${u.role !== 'admin' ? `
-                    <button onclick="updateRole('${u._id}', 'admin')" class="small">Make Admin</button>
-                  ` : ''}
-                  ${u.email !== (localStorage.getItem('email') || '') ? `
-                    <button onclick="deleteUser('${u._id}')" class="small" style="margin-left:8px;background:#fca5a5">Delete</button>
-                  ` : ''}
-                </div>
-              </div>
-            `).join('');
-            document.getElementById('userList').innerHTML = html || 'No users found';
-          } catch (err) {
-            toast.error('❌ ' + err.message);
-            document.getElementById('userList').innerHTML = 'Error loading users.';
-          }
-        }
-
-        // --- Create User ---
-        document.getElementById('createUserForm').addEventListener('submit', async (e) => {
-          e.preventDefault();
-          const email = document.getElementById('newEmail').value.trim();
-          const password = document.getElementById('newPassword').value.trim();
-          const role = document.getElementById('newRole').value;
-          try {
-            const r = await fetch('/api/auth/create-user', {
-              method: 'POST',
-              headers,
-              body: JSON.stringify({ email, password, role })
-            });
-            const j = await r.json();
-            if (!r.ok) throw new Error(j.message || 'Failed to create user');
-            toast.success('✅ User created successfully');
-            loadUsers();
-            e.target.reset();
-          } catch (err) {
-            toast.error('❌ ' + err.message);
-          }
-        });
-
-        // --- Update Role ---
-        async function updateRole(userId, newRole) {
-          try {
-            const r = await fetch('/api/auth/update-role', {
-              method: 'POST',
-              headers,
-              body: JSON.stringify({ userId, role: newRole })
-            });
-            const j = await r.json();
-            if (!r.ok) throw new Error(j.message || 'Failed to update role');
-            toast.success('✅ Role updated successfully');
-            loadUsers();
-          } catch (err) {
-            toast.error('❌ ' + err.message);
-          }
-        }
-
-        // --- Logout ---
-        document.getElementById('logout').addEventListener('click', () => {
-          localStorage.clear();
-          toast.info('🔒 Logged out');
-          setTimeout(() => location.href = '/', 1000);
-        });
-
-        // --- Health Check ---
-        document.getElementById('health').addEventListener('click', async () => {
-          try {
-            const r = await fetch('/api/health');
-            const j = await r.json();
-            toast.info('🩺 API Health: ' + (r.ok ? 'OK' : 'Down'));
-            document.getElementById('out').innerText = JSON.stringify(j, null, 2);
-          } catch (err) {
-            toast.error('❌ Health check failed: ' + err.message);
-          }
-        });
-
-        // --- Product Search ---
-        document.getElementById('productSearchBtn')?.addEventListener('click', async () => {
-          const q = document.getElementById('productQuery').value.trim();
-          if (!q) {
-            toast.info('🔍 Please enter a search query');
-            return;
-          }
-          try {
-            const r = await fetch('/api/products/search', {
-              method: 'POST',
-              headers,
-              body: JSON.stringify({ query: q })
-            });
-            const j = await r.json();
-            if (!r.ok) throw new Error(j.message || 'Search failed');
-            renderProductResults(j.products || []);
-            toast.success('✅ Products loaded');
-          } catch (err) {
-            toast.error('❌ ' + err.message);
-          }
-        });
-
-        // --- Render Product Results ---
-        function renderProductResults(products) {
-          const container = document.getElementById('productResults');
-          if (!products || !products.length) {
-            container.innerHTML = '<p>No products found</p>';
-            return;
-          }
-          container.innerHTML = products.map(p => `
-            <div style="padding:8px;border-bottom:1px solid #eee;display:flex;align-items:center;justify-content:space-between;">
-              <div style="display:flex;gap:12px;align-items:center;">
-                <img src="${p.image || '/images/placeholder.png'}" style="width:48px;height:48px;object-fit:cover;border-radius:6px;" />
-                <div>
-                  <div style="font-weight:600">${p.title}</div>
-                  <div style="font-size:12px;color:#666">ID: ${p._id}</div>
-                  <div style="font-size:12px;color:#666">Address: ${p.address || ''}</div>
-                  <div style="font-size:12px;color:#666">Phone: ${p.phone_number || ''}</div>
-                </div>
+      // --- Load Users ---
+      async function loadUsers() {
+        try {
+          const r = await fetch('/api/auth/users', { headers });
+          if (!r.ok) throw new Error('Failed to load users');
+          const users = await r.json();
+          const html = users.map(u => `
+            <div class="user-item">
+              <div>
+                ${u.email}
+                <span class="role-badge ${u.role}">${u.role}</span>
               </div>
               <div>
-                <button onclick="loadProductForEdit('${p._id}')" class="small">Edit</button>
-                <button onclick="deleteProduct('${p._id}')" class="small" style="margin-left:8px;background:#fca5a5">Delete</button>
+                ${u.role !== 'admin' ? `
+                  <button onclick="updateRole('${u._id}', 'admin')" class="small">Make Admin</button>
+                ` : ''}
+                ${u.email !== (localStorage.getItem('email') || '') ? `
+                  <button onclick="deleteUser('${u._id}')" class="small" style="margin-left:8px;background:#fca5a5">Delete</button>
+                ` : ''}
               </div>
             </div>
           `).join('');
+          document.getElementById('userList').innerHTML = html || 'No users found';
+        } catch (err) {
+          toast.error('❌ ' + err.message);
+          document.getElementById('userList').innerHTML = 'Error loading users.';
         }
+      }
 
-        // --- Delete Product ---
-        window.deleteProduct = async function (id) {
-          const confirmToast = document.createElement('div');
-          confirmToast.className = 'toast confirm-toast';
-          confirmToast.innerHTML = `
-            <div class="toast-message">🗑️ Delete this product permanently?</div>
-            <div style="display:flex;gap:8px;margin-top:8px;">
-              <button id="confirmYes" class="toast-btn yes">Yes, Delete</button>
-              <button id="confirmNo" class="toast-btn no">Cancel</button>
+      // --- Create User ---
+      document.getElementById('createUserForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        if (!checkTokenExpiry()) return;
+        
+        const email = document.getElementById('newEmail').value.trim();
+        const password = document.getElementById('newPassword').value.trim();
+        const role = document.getElementById('newRole').value;
+        try {
+          const r = await fetch('/api/auth/create-user', {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({ email, password, role })
+          });
+          const j = await r.json();
+          if (!r.ok) throw new Error(j.message || 'Failed to create user');
+          toast.success('✅ User created successfully');
+          loadUsers();
+          e.target.reset();
+        } catch (err) {
+          toast.error('❌ ' + err.message);
+        }
+      });
+
+      // --- Update Role ---
+      window.updateRole = async function(userId, newRole) {
+        try {
+          const r = await fetch('/api/auth/update-role', {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({ userId, role: newRole })
+          });
+          const j = await r.json();
+          if (!r.ok) throw new Error(j.message || 'Failed to update role');
+          toast.success('✅ Role updated successfully');
+          loadUsers();
+        } catch (err) {
+          toast.error('❌ ' + err.message);
+        }
+      }
+
+      // --- Logout ---
+      document.getElementById('logout').addEventListener('click', (e) => {
+        e.preventDefault();
+        localStorage.clear();
+        toast.info('🔒 Logged out');
+        setTimeout(() => location.href = '/', 1000);
+      });
+
+      // --- Health Check ---
+      document.getElementById('health').addEventListener('click', async () => {
+        try {
+          const r = await fetch('/api/health');
+          const j = await r.json();
+          toast.info('🩺 API Health: ' + (r.ok ? 'OK' : 'Down'));
+          document.getElementById('out').innerText = JSON.stringify(j, null, 2);
+        } catch (err) {
+          toast.error('❌ Health check failed: ' + err.message);
+        }
+      });
+
+      // --- Product Search ---
+      document.getElementById('productSearchBtn')?.addEventListener('click', async () => {
+        const q = document.getElementById('productQuery').value.trim();
+        if (!q) {
+          toast.info('🔍 Please enter a search query');
+          return;
+        }
+        try {
+          const r = await fetch('/api/products/search', {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({ query: q })
+          });
+          const j = await r.json();
+          if (!r.ok) throw new Error(j.message || 'Search failed');
+          renderProductResults(j.products || []);
+          toast.success('✅ Products loaded');
+        } catch (err) {
+          toast.error('❌ ' + err.message);
+        }
+      });
+
+      // --- Render Product Results ---
+      function renderProductResults(products) {
+        const container = document.getElementById('productResults');
+        if (!products || !products.length) {
+          container.innerHTML = '<p>No products found</p>';
+          return;
+        }
+        container.innerHTML = products.map(p => `
+          <div style="padding:8px;border-bottom:1px solid #eee;display:flex;align-items:center;justify-content:space-between;">
+            <div style="display:flex;gap:12px;align-items:center;">
+              <img src="${p.image || '/images/placeholder.png'}" style="width:48px;height:48px;object-fit:cover;border-radius:6px;" />
+              <div>
+                <div style="font-weight:600">${p.title}</div>
+                <div style="font-size:12px;color:#666">ID: ${p._id}</div>
+                <div style="font-size:12px;color:#666">Address: ${p.address || ''}</div>
+                <div style="font-size:12px;color:#666">Phone: ${p.phone_number || ''}</div>
+              </div>
             </div>
-          `;
-          toast.container.appendChild(confirmToast);
-
-          confirmToast.querySelector('#confirmYes').addEventListener('click', async () => {
-            confirmToast.remove();
-            try {
-              const r = await fetch('/api/products/' + id, { method: 'DELETE', headers });
-              const j = await r.json();
-              if (!r.ok) throw new Error(j.message || 'Delete failed');
-              toast.success('✅ Product deleted');
-              const q = document.getElementById('productQuery').value.trim();
-              if (q) document.getElementById('productSearchBtn').click();
-            } catch (err) {
-              toast.error('❌ Error deleting product: ' + err.message);
-            }
-          });
-
-          confirmToast.querySelector('#confirmNo').addEventListener('click', () => {
-            confirmToast.remove();
-            toast.info('Deletion cancelled');
-          });
-        };
-
-        // --- Delete User ---
-        window.deleteUser = async function (id) {
-          const confirmToast = document.createElement('div');
-          confirmToast.className = 'toast confirm-toast';
-          confirmToast.innerHTML = `
-            <div class="toast-message">⚠️ Delete this user and all their products?</div>
-            <div style="display:flex;gap:8px;margin-top:8px;">
-              <button id="confirmYes" class="toast-btn yes">Yes, Delete</button>
-              <button id="confirmNo" class="toast-btn no">Cancel</button>
+            <div>
+              <button onclick="loadProductForEdit('${p._id}')" class="small">Edit</button>
+              <button onclick="deleteProduct('${p._id}')" class="small" style="margin-left:8px;background:#fca5a5">Delete</button>
             </div>
-          `;
-          toast.container.appendChild(confirmToast);
+          </div>
+        `).join('');
+      }
 
-          confirmToast.querySelector('#confirmYes').addEventListener('click', async () => {
-            confirmToast.remove();
-            try {
-              const r = await fetch('/api/auth/users/' + id, { method: 'DELETE', headers });
-              const j = await r.json();
-              if (!r.ok) throw new Error(j.message || 'Delete failed');
-              toast.success('✅ User deleted successfully');
-              loadUsers();
-            } catch (err) {
-              toast.error('❌ Error deleting user: ' + err.message);
-            }
-          });
+      // --- Delete Product ---
+      window.deleteProduct = async function (id) {
+        const confirmToast = document.createElement('div');
+        confirmToast.className = 'toast confirm-toast';
+        confirmToast.innerHTML = `
+          <div class="toast-message">🗑️ Delete this product permanently?</div>
+          <div style="display:flex;gap:8px;margin-top:8px;">
+            <button id="confirmYes" class="toast-btn yes">Yes, Delete</button>
+            <button id="confirmNo" class="toast-btn no">Cancel</button>
+          </div>
+        `;
+        toast.container.appendChild(confirmToast);
 
-          confirmToast.querySelector('#confirmNo').addEventListener('click', () => {
-            confirmToast.remove();
-            toast.info('Deletion cancelled');
-          });
-        };
-
-        // --- Load Product For Edit ---
-        window.loadProductForEdit = async function (id) {
+        confirmToast.querySelector('#confirmYes').addEventListener('click', async () => {
+          confirmToast.remove();
           try {
-            const r = await fetch('/api/products/' + id, { headers });
-            const p = await r.json();
-            if (!r.ok) throw new Error(p.message || 'Failed to load product');
-            document.getElementById('editId').value = p._id;
-            document.getElementById('editTitle').value = p.title || '';
-            document.getElementById('editDescription').value = p.description || '';
-            document.getElementById('editPrice').value = p.price ?? 0;
-            document.getElementById('editQuantity').value = p.quantity ?? 0;
-            document.getElementById('editCategory').value = p.category || '';
-            document.getElementById('editImage').value = p.image || '';
-            document.getElementById('editAddress').value = p.address || '';
-            document.getElementById('editPhone').value = p.phone_number || '';
-            document.getElementById('editProductForm').style.display = 'block';
-            toast.info('✏️ Editing product details');
-            document.getElementById('editProductForm').scrollIntoView({ behavior: 'smooth' });
-          } catch (err) {
-            toast.error('❌ ' + err.message);
-          }
-        };
-
-        // --- Cancel Edit ---
-        document.getElementById('cancelEditBtn')?.addEventListener('click', () => {
-          document.getElementById('editProductForm').style.display = 'none';
-          toast.info('❎ Edit cancelled');
-        });
-
-        // --- Save Product Changes ---
-        document.getElementById('saveProductBtn')?.addEventListener('click', async () => {
-          const id = document.getElementById('editId').value;
-          if (!id) {
-            toast.info('⚠️ No product selected');
-            return;
-          }
-          const payload = {
-            title: document.getElementById('editTitle').value,
-            description: document.getElementById('editDescription').value,
-            price: parseFloat(document.getElementById('editPrice').value) || 0,
-            quantity: parseInt(document.getElementById('editQuantity').value) || 0,
-            category: document.getElementById('editCategory').value,
-            address: document.getElementById('editAddress').value,
-            phone_number: document.getElementById('editPhone').value,
-            image: document.getElementById('editImage').value
-          };
-          try {
-            const r = await fetch('/api/products/' + id, {
-              method: 'PUT',
-              headers,
-              body: JSON.stringify(payload)
-            });
+            const r = await fetch('/api/products/' + id, { method: 'DELETE', headers });
             const j = await r.json();
-            if (!r.ok) throw new Error(j.message || 'Save failed');
-            toast.success('💾 Product updated successfully');
-            document.getElementById('editProductForm').style.display = 'none';
+            if (!r.ok) throw new Error(j.message || 'Delete failed');
+            toast.success('✅ Product deleted');
+            const q = document.getElementById('productQuery').value.trim();
+            if (q) document.getElementById('productSearchBtn').click();
           } catch (err) {
-            toast.error('❌ ' + err.message);
+            toast.error('❌ Error deleting product: ' + err.message);
           }
         });
 
-        // --- Initial Load ---
-        loadUsers();
+        confirmToast.querySelector('#confirmNo').addEventListener('click', () => {
+          confirmToast.remove();
+          toast.info('Deletion cancelled');
+        });
+      };
+
+      // --- Delete User ---
+      window.deleteUser = async function (id) {
+        const confirmToast = document.createElement('div');
+        confirmToast.className = 'toast confirm-toast';
+        confirmToast.innerHTML = `
+          <div class="toast-message">⚠️ Delete this user and all their products?</div>
+          <div style="display:flex;gap:8px;margin-top:8px;">
+            <button id="confirmYes" class="toast-btn yes">Yes, Delete</button>
+            <button id="confirmNo" class="toast-btn no">Cancel</button>
+          </div>
+        `;
+        toast.container.appendChild(confirmToast);
+
+        confirmToast.querySelector('#confirmYes').addEventListener('click', async () => {
+          confirmToast.remove();
+          try {
+            const r = await fetch('/api/auth/users/' + id, { method: 'DELETE', headers });
+            const j = await r.json();
+            if (!r.ok) throw new Error(j.message || 'Delete failed');
+            toast.success('✅ User deleted successfully');
+            loadUsers();
+          } catch (err) {
+            toast.error('❌ Error deleting user: ' + err.message);
+          }
+        });
+
+        confirmToast.querySelector('#confirmNo').addEventListener('click', () => {
+          confirmToast.remove();
+          toast.info('Deletion cancelled');
+        });
+      };
+
+      // --- Load Product For Edit ---
+      window.loadProductForEdit = async function (id) {
+        try {
+          const r = await fetch('/api/products/' + id, { headers });
+          const p = await r.json();
+          if (!r.ok) throw new Error(p.message || 'Failed to load product');
+          document.getElementById('editId').value = p._id;
+          document.getElementById('editTitle').value = p.title || '';
+          document.getElementById('editDescription').value = p.description || '';
+          document.getElementById('editPrice').value = p.price ?? 0;
+          document.getElementById('editQuantity').value = p.quantity ?? 0;
+          document.getElementById('editCategory').value = p.category || '';
+          document.getElementById('editImage').value = p.image || '';
+          document.getElementById('editAddress').value = p.address || '';
+          document.getElementById('editPhone').value = p.phone_number || '';
+          document.getElementById('editProductForm').style.display = 'block';
+          toast.info('✏️ Editing product details');
+          document.getElementById('editProductForm').scrollIntoView({ behavior: 'smooth' });
+        } catch (err) {
+          toast.error('❌ ' + err.message);
+        }
+      };
+
+      // --- Cancel Edit ---
+      document.getElementById('cancelEditBtn')?.addEventListener('click', () => {
+        document.getElementById('editProductForm').style.display = 'none';
+        toast.info('❎ Edit cancelled');
+      });
+
+      // --- Save Product Changes ---
+      document.getElementById('saveProductBtn')?.addEventListener('click', async () => {
+        const id = document.getElementById('editId').value;
+        if (!id) {
+          toast.info('⚠️ No product selected');
+          return;
+        }
+        const payload = {
+          title: document.getElementById('editTitle').value,
+          description: document.getElementById('editDescription').value,
+          price: parseFloat(document.getElementById('editPrice').value) || 0,
+          quantity: parseInt(document.getElementById('editQuantity').value) || 0,
+          category: document.getElementById('editCategory').value,
+          address: document.getElementById('editAddress').value,
+          phone_number: document.getElementById('editPhone').value,
+          image: document.getElementById('editImage').value
+        };
+        try {
+          const r = await fetch('/api/products/' + id, {
+            method: 'PUT',
+            headers,
+            body: JSON.stringify(payload)
+          });
+          const j = await r.json();
+          if (!r.ok) throw new Error(j.message || 'Save failed');
+          toast.success('💾 Product updated successfully');
+          document.getElementById('editProductForm').style.display = 'none';
+        } catch (err) {
+          toast.error('❌ ' + err.message);
+        }
+      });
+
+      // --- Initial Load ---
+      loadUsers();
     </script>
   </body>
 </html>
