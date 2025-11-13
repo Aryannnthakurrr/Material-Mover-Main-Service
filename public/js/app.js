@@ -26,17 +26,37 @@ async function renderProducts(products) {
   });
 }
 
-document.getElementById('searchBtn')?.addEventListener('click', async () => {
+// --- NEW REUSABLE SEARCH FUNCTION ---
+async function performSearch() {
   const q = document.getElementById('query').value.trim();
   if (!q) return alert('enter query');
+  
   const token = localStorage.getItem('token');
   const headers = { 'Content-Type': 'application/json' };
   if (token) headers['Authorization'] = 'Bearer ' + token;
-  const resp = await fetch('/api/products/search', { method: 'POST', headers, body: JSON.stringify({ query: q }) });
-  const j = await resp.json();
-  if (!resp.ok) return alert(j.message || JSON.stringify(j));
-  renderProducts(j.products || []);
+  
+  try {
+    const resp = await fetch('/api/products/search', { method: 'POST', headers, body: JSON.stringify({ query: q }) });
+    const j = await resp.json();
+    if (!resp.ok) return alert(j.message || JSON.stringify(j));
+    renderProducts(j.products || []);
+  } catch (err) {
+    console.error('Search failed:', err);
+    alert('Search failed. Please try again.');
+  }
+}
+
+// --- UPDATED: Button click now calls the new function ---
+document.getElementById('searchBtn')?.addEventListener('click', performSearch);
+
+// --- NEW: Add event listener for "Enter" key on the input ---
+document.getElementById('query')?.addEventListener('keydown', (event) => {
+  if (event.key === 'Enter') {
+    event.preventDefault(); // Stop default "Enter" behavior (like form submission)
+    performSearch();
+  }
 });
+
 
 // Basic load: fetch all products
 // Update header based on login state
